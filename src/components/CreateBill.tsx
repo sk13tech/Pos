@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Plus, Minus, Trash2, X, ShoppingCart, ImageDown, FileDown, Loader2 } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, ShoppingCart, ImageDown, FileDown, Loader2, ScanLine } from 'lucide-react';
 import { Product, BillItem } from '../types';
-import { getInventory, getTemplate, getNextBillNo, saveBill, getMargin } from '../store';
+import {
+  getInventory,
+  getTemplate,
+  getNextBillNo,
+  saveBill,
+  getMargin,
+  getStoreName,
+  getStorePhone,
+  getStoreAddress,
+  getStoreGstin,
+} from '../store';
 import { getQrHtml } from '../barcode';
 import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import Toast from './Toast';
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 export default function CreateBill() {
   const [q, setQ] = useState('');
@@ -15,10 +27,13 @@ export default function CreateBill() {
   const [toast, setToast] = useState('');
   const [tt, setTT] = useState<'success'|'error'|'info'>('success');
   const [exporting, setExporting] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const inv = useRef<Product[]>([]);
 
   useEffect(() => { inv.current = getInventory(); }, []);
+
+  const notify = (m: string, t: 'success'|'error'|'info' = 'success') => { setToast(m); setTT(t); setTimeout(() => setToast(''), 2500); };
 
   const search = useCallback((v: string) => {
     setQ(v);
@@ -31,14 +46,35 @@ export default function CreateBill() {
   const add = useCallback((p: Product) => {
     setCart(c => {
       const e = c.find(i => i.product.id === p.id);
-      if (e) return c.map(i => i.product.id === p.id ? {...i, qty: i.qty+1} : i);
-      return [...c, {product: p, qty: 1}];
+      if (e) return c.map(i => i.product.id === p.id ? { ...i, qty: i.qty + 1 } : i);
+      return [...c, { product: p, qty: 1 }];
     });
-    setQ(''); setOpen(false);
+    setQ('');
+    setOpen(false);
   }, []);
 
+  const handleScannedValue = useCallback((value: string) => {
+    const exact = inv.current.find(p => p.ean.trim() === value.trim());
+    if (exact) {
+      add(exact);
+      notify(`Added ${exact.item}`, 'success');
+      return;
+    }
+
+    const partial = inv.current.find(p => p.ean.includes(value.trim()) || value.includes(p.ean));
+    if (partial) {
+      add(partial);
+      notify(`Added ${partial.item}`, 'success');
+      return;
+    }
+
+    setQ(value);
+    search(value);
+    notify('No exact barcode match found', 'info');
+  }, [add, search]);
+
   const qty = useCallback((id: string, d: number) => {
-    setCart(c => c.map(i => i.product.id === id ? {...i, qty: Math.max(0, i.qty+d)} : i).filter(i => i.qty > 0));
+    setCart(c => c.map(i => i.product.id === id ? { ...i, qty: Math.max(0, i.qty + d) } : i).filter(i => i.qty > 0));
   }, []);
 
   const rm = useCallback((id: string) => { setCart(c => c.filter(i => i.product.id !== id)); }, []);
@@ -47,12 +83,9 @@ export default function CreateBill() {
   const ti = cart.length;
   const tq = cart.reduce((s, i) => s + i.qty, 0);
 
-  const notify = (m: string, t: 'success'|'error'|'info' = 'success') => { setToast(m); setTT(t); setTimeout(() => setToast(''), 2500); };
-
   // Build receipt rows for thermal template:
-  // line 1 => serial + item name
+  // line 1 => item name
   // line 2 => qty, rate, amount aligned in fixed columns
-  // User template should place {{ITEMS}} inside <tbody>
   const buildItemsHtml = () => {
     return cart.map((item) =>
       `<tr>
@@ -67,7 +100,6 @@ export default function CreateBill() {
     ).join('');
   };
 
-  // Build invoice HTML — pure function, no side effects
   const buildInvoiceHtml = async () => {
     const tpl = getTemplate();
     const bn = getNextBillNo();
@@ -77,12 +109,20 @@ export default function CreateBill() {
     const custName = name || 'Walk-in Customer';
 
     const qrHtml = await getQrHtml(bn);
+    const storeName = getStoreName() || 'RETAIL STORE';
+    const storePhone = getStorePhone() || '+91 98765 43210';
+    const storeAddress = getStoreAddress() || '123 Market Street, New Delhi - 110001';
+    const storeGstin = getStoreGstin() || '07AAACR1234A1Z5';
 
     const html = tpl
       .replace(/\{\{BILL_NO\}\}/g, bn)
       .replace(/\{\{DATE\}\}/g, date)
       .replace(/\{\{TIME\}\}/g, time)
       .replace(/\{\{CUSTOMER_NAME\}\}/g, custName)
+      .replace(/\{\{STORE_NAME\}\}/g, storeName)
+      .replace(/\{\{STORE_PHONE\}\}/g, storePhone)
+      .replace(/\{\{STORE_ADDRESS\}\}/g, storeAddress)
+      .replace(/\{\{STORE_GSTIN\}\}/g, storeGstin)
       .replace(/\{\{ITEMS\}\}/g, buildItemsHtml())
       .replace(/\{\{TOTAL\}\}/g, total.toFixed(0))
       .replace(/\{\{TOTAL_ITEMS\}\}/g, ti.toString())
@@ -92,32 +132,23 @@ export default function CreateBill() {
     return { html, bn, date, time, custName };
   };
 
-  // Save bill to store (called once after successful export)
   const persistBill = (bn: string, date: string, time: string, custName: string) => {
-    saveBill({
-      id: crypto.randomUUID(), billNo: bn, date, time,
-      customerName: custName, items: cart, total
-    });
+    saveBill({ id: crypto.randomUUID(), billNo: bn, date, time, customerName: custName, items: cart, total });
     setCart([]); setName('');
   };
 
-  // Download as PNG — render template exactly as-is, no added margin/padding
   const downloadImage = async () => {
     if (!cart.length) { notify('Add items first', 'error'); return; }
     setExporting(true);
 
     const { html, bn, date, time, custName } = await buildInvoiceHtml();
-
-    // Get margin setting
     const margin = getMargin();
     const pad = margin === 'none' ? '0' : margin === 'max' ? '16mm 12mm' : '8mm 6mm';
 
     const container = document.createElement('div');
-    // display:inline-block so container shrinks to fit content (image = exact bill size)
     container.style.cssText = `position:fixed;left:-9999px;top:0;display:inline-block;background:#fff;padding:${pad};`;
     container.innerHTML = html;
 
-    // When "none" — force 0 padding/margin on ALL elements inside so truly edge-to-edge
     if (margin === 'none') {
       container.querySelectorAll(':scope > *').forEach(el => {
         const h = el as HTMLElement;
@@ -153,35 +184,60 @@ export default function CreateBill() {
     }
   };
 
-  // Download as HTML — proper standalone document
-  const downloadHtml = async () => {
+  const downloadPdf = async () => {
     if (!cart.length) { notify('Add items first', 'error'); return; }
+    setExporting(true);
+
     const { html, bn, date, time, custName } = await buildInvoiceHtml();
     const margin = getMargin();
     const pad = margin === 'none' ? '0' : margin === 'max' ? '16mm 12mm' : '8mm 6mm';
-    const stripCss = margin === 'none' ? 'body>*{padding:0!important;margin:0!important;max-width:none!important;}' : '';
-    const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invoice #${bn}</title>
-  <style>
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-    ${stripCss}
-  </style>
-</head>
-<body style="margin:0;padding:${pad};">
-${html}
-</body>
-</html>`;
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `invoice_${bn}.html`; a.click();
-    URL.revokeObjectURL(url);
-    persistBill(bn, date, time, custName);
-    notify(`Invoice #${bn} generated`, 'success');
+
+    const container = document.createElement('div');
+    container.style.cssText = `position:fixed;left:-9999px;top:0;display:inline-block;background:#fff;padding:${pad};`;
+    container.innerHTML = html;
+
+    if (margin === 'none') {
+      container.querySelectorAll(':scope > *').forEach(el => {
+        const h = el as HTMLElement;
+        h.style.padding = '0';
+        h.style.margin = '0';
+        h.style.maxWidth = 'none';
+      });
+    }
+
+    document.body.appendChild(container);
+
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const canvas = await html2canvas(container, {
+        scale: 4,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: container.scrollWidth,
+        windowHeight: container.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidthMm = 57;
+      const pdfHeightMm = (canvas.height * pdfWidthMm) / canvas.width;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pdfWidthMm, pdfHeightMm],
+        compress: true,
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidthMm, pdfHeightMm, undefined, 'FAST');
+      pdf.save(`invoice_${bn}.pdf`);
+
+      persistBill(bn, date, time, custName);
+      notify(`Invoice #${bn} saved as PDF`, 'success');
+    } catch {
+      notify('Failed to generate PDF', 'error');
+    } finally {
+      document.body.removeChild(container);
+      setExporting(false);
+    }
   };
 
   useEffect(() => {
@@ -193,12 +249,28 @@ ${html}
     <div className="space-y-5">
       {/* Search */}
       <div ref={ref} className="relative">
-        <div className="flex items-center bg-[#e5e5ea] dark:bg-[#1c1c1e] rounded-[10px] px-3 py-[9px]">
-          <Search size={16} className="text-[#8e8e93] mr-2 flex-shrink-0" />
-          <input type="text" placeholder="Search products by name or barcode"
-            value={q} onChange={e => search(e.target.value)} onFocus={() => q && results.length && setOpen(true)}
-            className="bg-transparent text-[17px] outline-none w-full text-black dark:text-white placeholder:text-[#8e8e93]" />
-          {q && <button onClick={() => { setQ(''); setOpen(false); }} className="w-[18px] h-[18px] rounded-full bg-[#8e8e93] flex items-center justify-center ml-1"><X size={10} className="text-white" /></button>}
+        <div className="flex items-center bg-[#e5e5ea] dark:bg-[#1c1c1e] rounded-[10px] px-3 py-[9px] gap-2">
+          <Search size={16} className="text-[#8e8e93] flex-shrink-0" />
+          <input
+            type="text"
+            placeholder="Search products by name or barcode"
+            value={q}
+            onChange={e => search(e.target.value)}
+            onFocus={() => q && results.length && setOpen(true)}
+            className="bg-transparent text-[17px] outline-none w-full text-black dark:text-white placeholder:text-[#8e8e93]"
+          />
+          <button
+            onClick={() => setShowScanner(true)}
+            className="w-[28px] h-[28px] rounded-[8px] bg-white dark:bg-[#2c2c2e] flex items-center justify-center flex-shrink-0 active:opacity-70"
+            aria-label="Scan barcode"
+          >
+            <ScanLine size={16} className="text-[#007AFF]" />
+          </button>
+          {q && (
+            <button onClick={() => { setQ(''); setOpen(false); }} className="w-[18px] h-[18px] rounded-full bg-[#8e8e93] flex items-center justify-center flex-shrink-0">
+              <X size={10} className="text-white" />
+            </button>
+          )}
         </div>
         {open && results.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#2c2c2e] rounded-[10px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] max-h-[280px] overflow-auto z-50">
@@ -239,7 +311,6 @@ ${html}
             </div>
           ) : (
             <>
-              {/* Column Header */}
               <div className="flex items-center px-4 py-[8px] bg-[#f8f8f8] dark:bg-[#2c2c2e]" style={{ borderBottom: '0.5px solid var(--sep)' }}>
                 <span className="flex-1 text-[11px] font-semibold text-[#8e8e93] uppercase tracking-wide">Item</span>
                 <span className="w-[100px] text-[11px] font-semibold text-[#8e8e93] uppercase tracking-wide text-center">Qty</span>
@@ -247,15 +318,11 @@ ${html}
                 <span className="w-[60px] text-[11px] font-semibold text-[#8e8e93] uppercase tracking-wide text-right">Amt</span>
                 <span className="w-[32px]"></span>
               </div>
-              {/* Rows */}
               {cart.map((item, i) => (
-                <div key={item.product.id} className="flex items-center px-4 py-[9px]"
-                  style={i < cart.length - 1 ? { borderBottom: '0.5px solid var(--sep)' } : {}}>
-                  {/* Item name */}
+                <div key={item.product.id} className="flex items-center px-4 py-[9px]" style={i < cart.length - 1 ? { borderBottom: '0.5px solid var(--sep)' } : {}}>
                   <div className="flex-1 min-w-0 pr-2">
                     <p className="text-[15px] text-black dark:text-white truncate leading-tight">{item.product.item}</p>
                   </div>
-                  {/* Qty stepper */}
                   <div className="w-[100px] flex items-center justify-center">
                     <div className="flex items-center bg-[#f2f2f7] dark:bg-[#2c2c2e] rounded-[7px]">
                       <button onClick={() => qty(item.product.id, -1)} className="w-[28px] h-[28px] flex items-center justify-center text-[#007AFF] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] rounded-l-[7px]">
@@ -267,11 +334,8 @@ ${html}
                       </button>
                     </div>
                   </div>
-                  {/* Rate */}
                   <span className="w-[52px] text-[14px] text-[#8e8e93] tabular-nums text-right">{item.product.rate}</span>
-                  {/* Amount */}
                   <span className="w-[60px] text-[15px] font-semibold text-black dark:text-white tabular-nums text-right">{(item.product.rate * item.qty).toFixed(0)}</span>
-                  {/* Delete */}
                   <div className="w-[32px] flex justify-end">
                     <button onClick={() => rm(item.product.id)} className="text-[#FF3B30] active:opacity-50 p-1">
                       <Trash2 size={16} />
@@ -310,9 +374,9 @@ ${html}
               className="w-full bg-[#007AFF] text-white text-[17px] font-semibold rounded-[10px] py-[14px] flex items-center justify-center gap-2 active:bg-[#0066d6] disabled:opacity-60">
               {exporting ? <><Loader2 size={18} className="animate-spin" /> Generating...</> : <><ImageDown size={18} /> Download as Image</>}
             </button>
-            <button onClick={downloadHtml}
+            <button onClick={downloadPdf}
               className="w-full text-[#007AFF] text-[17px] font-medium rounded-[10px] py-[14px] bg-white dark:bg-[#1c1c1e] active:bg-[#f2f2f7] dark:active:bg-[#2c2c2e] flex items-center justify-center gap-2">
-              <FileDown size={18} /> Download as HTML
+              <FileDown size={18} /> Download as PDF
             </button>
             <button onClick={() => { setCart([]); setName(''); }}
               className="w-full text-[#FF3B30] text-[17px] font-medium rounded-[10px] py-[14px] bg-white dark:bg-[#1c1c1e] active:bg-[#f2f2f7] dark:active:bg-[#2c2c2e]">
@@ -322,6 +386,7 @@ ${html}
         </>
       )}
 
+      <BarcodeScannerModal open={showScanner} onClose={() => setShowScanner(false)} onDetected={handleScannedValue} />
       <Toast message={toast} type={tt} />
     </div>
   );

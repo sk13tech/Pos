@@ -12,6 +12,12 @@ const KEYS = {
   billCounter: 'retail_panel_bill_counter',
   darkMode: 'retail_panel_dark',
   margin: 'retail_panel_margin',
+  storeName: 'retail_panel_store_name',
+  storePhone: 'retail_panel_store_phone',
+  storeAddress: 'retail_panel_store_address',
+  storeGstin: 'retail_panel_store_gstin',
+  currency: 'retail_panel_currency',
+  billPrefix: 'retail_panel_bill_prefix',
 };
 
 // ---- Inventory ----
@@ -52,8 +58,8 @@ export function saveBillsBulk(bills: Bill[]) {
 export function getNextBillNo(): string {
   const c = parseInt(localStorage.getItem(KEYS.billCounter) || '0') + 1;
   localStorage.setItem(KEYS.billCounter, c.toString());
-  // No syncToCloud here — saveBill() always follows and will sync the counter too
-  return c.toString().padStart(4, '0');
+  const prefix = getBillPrefix();
+  return prefix + c.toString().padStart(4, '0');
 }
 
 // ---- Export / Import (file backup) ----
@@ -86,6 +92,44 @@ export function setMargin(m: MarginSetting) {
   syncToCloud();
 }
 
+// ---- Store Info ----
+export function getStoreName(): string { return localStorage.getItem(KEYS.storeName) || ''; }
+export function setStoreName(v: string) { localStorage.setItem(KEYS.storeName, v); syncToCloud(); }
+
+export function getStorePhone(): string { return localStorage.getItem(KEYS.storePhone) || ''; }
+export function setStorePhone(v: string) { localStorage.setItem(KEYS.storePhone, v); syncToCloud(); }
+
+export function getStoreAddress(): string { return localStorage.getItem(KEYS.storeAddress) || ''; }
+export function setStoreAddress(v: string) { localStorage.setItem(KEYS.storeAddress, v); syncToCloud(); }
+
+export function getStoreGstin(): string { return localStorage.getItem(KEYS.storeGstin) || ''; }
+export function setStoreGstin(v: string) { localStorage.setItem(KEYS.storeGstin, v); syncToCloud(); }
+
+// Save editable settings in one action, then sync once
+export function saveSettingsBatch(settings: {
+  storeName: string;
+  storePhone: string;
+  storeAddress: string;
+  storeGstin: string;
+  margin: MarginSetting;
+}) {
+  localStorage.setItem(KEYS.storeName, settings.storeName);
+  localStorage.setItem(KEYS.storePhone, settings.storePhone);
+  localStorage.setItem(KEYS.storeAddress, settings.storeAddress);
+  localStorage.setItem(KEYS.storeGstin, settings.storeGstin);
+  localStorage.setItem(KEYS.margin, settings.margin);
+  syncToCloud();
+}
+
+export function getCurrency(): string { return localStorage.getItem(KEYS.currency) || '₹'; }
+export function setCurrency(v: string) { localStorage.setItem(KEYS.currency, v); syncToCloud(); }
+
+export function getBillPrefix(): string { return localStorage.getItem(KEYS.billPrefix) || ''; }
+export function setBillPrefix(v: string) { localStorage.setItem(KEYS.billPrefix, v); syncToCloud(); }
+
+export function getBillCounter(): number { return parseInt(localStorage.getItem(KEYS.billCounter) || '0'); }
+export function setBillCounter(v: number) { localStorage.setItem(KEYS.billCounter, v.toString()); syncToCloud(); }
+
 // ---- Dark Mode (local only — not synced) ----
 export function getDarkMode(): boolean {
   return localStorage.getItem(KEYS.darkMode) === '1';
@@ -97,11 +141,10 @@ export function setDarkMode(on: boolean) {
 // ---- Default Template ----
 const DEFAULT_TEMPLATE = `<div style="font-family: 'Courier New', Courier, monospace; width: 48mm; margin: 0 auto; padding: 4mm 0; color: #000; font-size: 11px; line-height: 1.4;">
   <div style="text-align: center; padding-bottom: 6px; border-bottom: 1px dashed #000;">
-    <p style="font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 1px;">RETAIL STORE</p>
-    <p style="font-size: 9px; margin: 2px 0 0 0;">123 Market Street</p>
-    <p style="font-size: 9px; margin: 0;">New Delhi - 110001</p>
-    <p style="font-size: 9px; margin: 2px 0 0 0;">Ph: +91 98765 43210</p>
-    <p style="font-size: 8px; margin: 2px 0 0 0;">GSTIN: 07AAACR1234A1Z5</p>
+    <p style="font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 1px;">{{STORE_NAME}}</p>
+    <p style="font-size: 9px; margin: 2px 0 0 0;">{{STORE_ADDRESS}}</p>
+    <p style="font-size: 9px; margin: 2px 0 0 0;">Ph: {{STORE_PHONE}}</p>
+    <p style="font-size: 8px; margin: 2px 0 0 0;">GSTIN: {{STORE_GSTIN}}</p>
   </div>
   <div style="padding: 6px 0; border-bottom: 1px dashed #000; font-size: 10px;">
     <table style="width: 100%; border-collapse: collapse;">

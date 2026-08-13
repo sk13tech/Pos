@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Save, Eye, EyeOff, Copy, Check, ChevronRight } from 'lucide-react';
-import { getTemplate, setTemplate } from '../store';
+import { getTemplate, setTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin } from '../store';
 import { getQrHtml } from '../barcode';
 import Toast from './Toast';
 
 const VARS = [
+  { name:'{{STORE_NAME}}', desc:'Store name' },
+  { name:'{{STORE_PHONE}}', desc:'Store phone' },
+  { name:'{{STORE_ADDRESS}}', desc:'Store address' },
+  { name:'{{STORE_GSTIN}}', desc:'Store GSTIN' },
   { name:'{{BILL_NO}}', desc:'Invoice number' },
   { name:'{{DATE}}', desc:'Date' },
   { name:'{{TIME}}', desc:'Time' },
@@ -35,6 +39,10 @@ export default function Template() {
     (async () => {
       const qr = await getQrHtml('0001');
       const p = html
+        .replace(/\{\{STORE_NAME\}\}/g, getStoreName() || 'RETAIL STORE')
+        .replace(/\{\{STORE_PHONE\}\}/g, getStorePhone() || '+91 98765 43210')
+        .replace(/\{\{STORE_ADDRESS\}\}/g, getStoreAddress() || '123 Market Street, New Delhi - 110001')
+        .replace(/\{\{STORE_GSTIN\}\}/g, getStoreGstin() || '07AAACR1234A1Z5')
         .replace(/\{\{BILL_NO\}\}/g, '0001')
         .replace(/\{\{DATE\}\}/g, new Date().toLocaleDateString('en-IN'))
         .replace(/\{\{TIME\}\}/g, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }))
@@ -79,7 +87,7 @@ export default function Template() {
         <div>
           <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Variables — Tap to Copy</p>
           <p className="text-[13px] text-[#8e8e93] px-4 mb-2 leading-relaxed">
-            <code>{'{{ITEMS}}'}</code> outputs styled rows. Place inside <code>&lt;tbody&gt;</code>. <code>{'{{BILL_BARCODE}}'}</code> outputs a QR code image.
+            <code>{'{{STORE_NAME}}'}</code>, <code>{'{{STORE_PHONE}}'}</code>, <code>{'{{STORE_ADDRESS}}'}</code>, <code>{'{{STORE_GSTIN}}'}</code> come from Settings. <code>{'{{ITEMS}}'}</code> outputs styled rows for <code>&lt;tbody&gt;</code>. <code>{'{{BILL_BARCODE}}'}</code> outputs a QR code image.
           </p>
           <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
             {VARS.map((v, i) => (
@@ -106,9 +114,15 @@ export default function Template() {
         </p>
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
           {!preview ? (
-            <textarea value={html} onChange={e => setHtml(e.target.value)} spellCheck={false}
-              className="w-full h-[400px] px-4 py-3 text-[15px] font-mono text-black dark:text-white bg-transparent outline-none resize-none leading-relaxed"
-              placeholder="Paste your full invoice HTML template here..." />
+            <textarea
+              value={html}
+              onChange={e => setHtml(e.target.value)}
+              spellCheck={false}
+              wrap="off"
+              className="w-full h-[400px] px-4 py-3 text-[15px] font-mono text-black dark:text-white bg-transparent outline-none resize-none leading-relaxed overflow-x-auto whitespace-pre"
+              style={{ tabSize: 2 }}
+              placeholder="Paste your full invoice HTML template here..."
+            />
           ) : (
             <div className="p-4 min-h-[300px] bg-white">
               <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
