@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  :root {
+    --sep: #c6c6c8;
+  }
+  .dark {
+    --sep: #38383a;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: #f2f2f7;
+    color: #000;
+    margin: 0;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  .dark body {
+    background: #000;
+    color: #fff;
+  }
+  input, textarea, select {
+    font-size: 16px;
+    font-family: inherit;
+  }
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
+* { scrollbar-width: none; }
