@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Moon, Maximize, Minimize, AlignCenter,
+  Moon,
   LogIn, LogOut, User, Download, Upload,
   Loader2, ChevronRight, HelpCircle, RefreshCw,
   Store, Phone, MapPin, FileText
@@ -16,18 +16,13 @@ import {
   getStoreAddress,
   getStoreGstin,
   saveSettingsBatch,
+  getQrSize,
 } from '../store';
 import { MarginSetting } from '../types';
 import { googleSignIn, googleSignOut, syncToCloudNow } from '../firebase';
 import { useAuth } from '../App';
 import Toast from './Toast';
 import ActionSheet from './ActionSheet';
-
-const MARGIN_OPTIONS: { value: MarginSetting; label: string; icon: React.ReactNode }[] = [
-  { value: 'none', label: 'None', icon: <Minimize size={14} /> },
-  { value: 'default', label: 'Default', icon: <AlignCenter size={14} /> },
-  { value: 'max', label: 'Max', icon: <Maximize size={14} /> },
-];
 
 export default function SettingsPanel() {
   const { user, restoring } = useAuth();
@@ -44,6 +39,7 @@ export default function SettingsPanel() {
   const [sPhone, setSPhone] = useState(getStorePhone());
   const [sAddr, setSAddr] = useState(getStoreAddress());
   const [sGstin, setSGstin] = useState(getStoreGstin());
+  const [qrSizeVal, setQrSizeVal] = useState(getQrSize());
 
   const notify = (m: string, t: 'success' | 'error' | 'info' = 'success') => {
     setToast(m);
@@ -88,6 +84,7 @@ export default function SettingsPanel() {
         storeAddress: sAddr,
         storeGstin: sGstin,
         margin: marginVal,
+        qrSize: qrSizeVal,
       });
       if (user) {
         await syncToCloudNow();
@@ -210,30 +207,46 @@ export default function SettingsPanel() {
         </div>
       </div>
 
-      {/* Invoice Margin */}
+      {/* Invoice Spacing */}
       <div>
-        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Invoice Margin</p>
-        <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden p-3">
-          <div className="flex bg-[#e5e5ea] dark:bg-[#2c2c2e] rounded-[8px] p-[2px]">
-            {MARGIN_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setMarginVal(opt.value)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-[7px] rounded-[7px] text-[13px] font-semibold transition-all ${
-                  marginVal === opt.value
-                    ? 'bg-white dark:bg-[#3a3a3c] text-black dark:text-white shadow-[0_1px_3px_rgba(0,0,0,0.1)]'
-                    : 'text-[#8e8e93]'
-                }`}
-              >
-                {opt.icon} {opt.label}
-              </button>
-            ))}
+        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Invoice Spacing</p>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[15px] text-black dark:text-white">{marginVal}px</span>
+            <span className="text-[13px] text-[#8e8e93]">0 – 20</span>
           </div>
+          <input
+            type="range"
+            min={0}
+            max={20}
+            step={1}
+            value={marginVal}
+            onChange={e => setMarginVal(Number(e.target.value))}
+            className="w-full ios-slider"
+          />
           <p className="text-[13px] text-[#8e8e93] mt-3 px-1">
-            {marginVal === 'none' && 'No margin. Invoice goes edge-to-edge.'}
-            {marginVal === 'default' && 'Standard margin around the invoice.'}
-            {marginVal === 'max' && 'Extra margin for a spacious layout.'}
+            Adds top and bottom spacing around the bill during preview, image export, and PDF export.
           </p>
+        </div>
+      </div>
+
+      {/* QR Code Size */}
+      <div>
+        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">QR Code Size</p>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[15px] text-black dark:text-white">{qrSizeVal}px</span>
+            <span className="text-[13px] text-[#8e8e93]">20 – 100</span>
+          </div>
+          <input
+            type="range"
+            min={20}
+            max={100}
+            step={1}
+            value={qrSizeVal}
+            onChange={e => setQrSizeVal(Number(e.target.value))}
+            className="w-full ios-slider"
+          />
         </div>
       </div>
 

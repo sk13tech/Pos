@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save, Eye, EyeOff, Copy, Check, ChevronRight } from 'lucide-react';
-import { getTemplate, setTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin } from '../store';
+import { getTemplate, setTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin, getQrSize, getMargin } from '../store';
 import { getQrHtml } from '../barcode';
 import Toast from './Toast';
 
@@ -20,7 +20,7 @@ const VARS = [
   { name:'{{BILL_BARCODE}}', desc:'QR Code (DDMMYYYYBILLNO)' },
 ];
 
-const SAMPLE_ITEMS = `<tr><td colspan="4" style="padding:5px 0 1px 0;font-size:10px;line-height:1.25;word-break:break-word;">Amul Butter (500g)</td></tr><tr><td style="padding:0 0 5px 0;font-size:10px;"></td><td style="padding:0 0 5px 0;font-size:10px;text-align:center;">2</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;">270</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;font-weight:700;">540</td></tr><tr><td colspan="4" style="padding:5px 0 1px 0;font-size:10px;line-height:1.25;word-break:break-word;">Red Label Tea (500g)</td></tr><tr><td style="padding:0 0 5px 0;font-size:10px;"></td><td style="padding:0 0 5px 0;font-size:10px;text-align:center;">1</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;">235</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;font-weight:700;">235</td></tr><tr><td colspan="4" style="padding:5px 0 1px 0;font-size:10px;line-height:1.25;word-break:break-word;">Parle-G Biscuit (250g)</td></tr><tr><td style="padding:0 0 5px 0;font-size:10px;"></td><td style="padding:0 0 5px 0;font-size:10px;text-align:center;">3</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;">20</td><td style="padding:0 0 5px 0;font-size:10px;text-align:right;font-weight:700;">60</td></tr>`;
+const SAMPLE_ITEMS = `<tr><td colspan="4" style="padding:3px 0 0 0;">Amul Butter (500g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">2</td><td style="text-align:right;padding:0 4px 3px 0;">270.00</td><td style="text-align:right;padding:0 0 3px 4px;">540.00</td></tr><tr><td colspan="4" style="padding:3px 0 0 0;">Red Label Tea (500g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">1</td><td style="text-align:right;padding:0 4px 3px 0;">235.00</td><td style="text-align:right;padding:0 0 3px 4px;">235.00</td></tr><tr><td colspan="4" style="padding:3px 0 0 0;">Parle-G Biscuit (250g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">3</td><td style="text-align:right;padding:0 4px 3px 0;">20.00</td><td style="text-align:right;padding:0 0 3px 4px;">60.00</td></tr>`;
 
 export default function Template() {
   const [html, setHtml] = useState('');
@@ -37,7 +37,7 @@ export default function Template() {
   useEffect(() => {
     if (!preview) return;
     (async () => {
-      const qr = await getQrHtml('0001');
+      const qr = await getQrHtml('0001', getQrSize());
       const p = html
         .replace(/\{\{STORE_NAME\}\}/g, getStoreName() || 'RETAIL STORE')
         .replace(/\{\{STORE_PHONE\}\}/g, getStorePhone() || '+91 98765 43210')
@@ -48,7 +48,7 @@ export default function Template() {
         .replace(/\{\{TIME\}\}/g, new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }))
         .replace(/\{\{CUSTOMER_NAME\}\}/g, 'Rahul Sharma')
         .replace(/\{\{ITEMS\}\}/g, SAMPLE_ITEMS)
-        .replace(/\{\{TOTAL\}\}/g, '835')
+        .replace(/\{\{TOTAL\}\}/g, '835.00')
         .replace(/\{\{TOTAL_ITEMS\}\}/g, '3')
         .replace(/\{\{TOTAL_QTY\}\}/g, '6')
         .replace(/\{\{BILL_BARCODE\}\}/g, qr);
@@ -87,7 +87,7 @@ export default function Template() {
         <div>
           <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Variables — Tap to Copy</p>
           <p className="text-[13px] text-[#8e8e93] px-4 mb-2 leading-relaxed">
-            <code>{'{{STORE_NAME}}'}</code>, <code>{'{{STORE_PHONE}}'}</code>, <code>{'{{STORE_ADDRESS}}'}</code>, <code>{'{{STORE_GSTIN}}'}</code> come from Settings. <code>{'{{ITEMS}}'}</code> outputs styled rows for <code>&lt;tbody&gt;</code>. <code>{'{{BILL_BARCODE}}'}</code> outputs a QR code image.
+            <code>{'{{STORE_NAME}}'}</code>, <code>{'{{STORE_PHONE}}'}</code>, <code>{'{{STORE_ADDRESS}}'}</code>, <code>{'{{STORE_GSTIN}}'}</code> come from Settings. <code>{'{{ITEMS}}'}</code> outputs item rows with right-aligned numeric values for <code>&lt;tbody&gt;</code>. <code>{'{{BILL_BARCODE}}'}</code> outputs a QR code image. Invoice spacing is applied automatically from Settings during preview/export.
           </p>
           <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
             {VARS.map((v, i) => (
@@ -124,8 +124,8 @@ export default function Template() {
               placeholder="Paste your full invoice HTML template here..."
             />
           ) : (
-            <div className="p-4 min-h-[300px] bg-white">
-              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            <div className="min-h-[300px] bg-white overflow-auto" style={{ margin: 0, padding: `${getMargin()}px 0` }}>
+              <div style={{ margin: 0, padding: 0 }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
             </div>
           )}
         </div>

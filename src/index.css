@@ -32,3 +32,46 @@
 
 ::-webkit-scrollbar { width: 0; height: 0; }
 * { scrollbar-width: none; }
+
+/* iOS-style slider */
+.ios-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 32px;
+  background: transparent;
+}
+.ios-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: #d1d1d6;
+  border-radius: 999px;
+}
+.dark .ios-slider::-webkit-slider-runnable-track {
+  background: #3a3a3c;
+}
+.ios-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+.ios-slider::-moz-range-track {
+  height: 4px;
+  background: #d1d1d6;
+  border-radius: 999px;
+}
+.dark .ios-slider::-moz-range-track {
+  background: #3a3a3c;
+}
+.ios-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}

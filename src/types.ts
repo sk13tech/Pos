@@ -23,4 +23,4 @@ export interface Bill {
 
 export type TabId = 'create' | 'inventory' | 'template' | 'settings';
 
-export type MarginSetting = 'none' | 'default' | 'max';
+export type MarginSetting = number;

@@ -18,6 +18,7 @@ const KEYS = {
   storeGstin: 'retail_panel_store_gstin',
   currency: 'retail_panel_currency',
   billPrefix: 'retail_panel_bill_prefix',
+  qrSize: 'retail_panel_qr_size',
 };
 
 // ---- Inventory ----
@@ -83,12 +84,14 @@ export function importData(s: string) {
   } catch { return false; }
 }
 
-// ---- Margin ----
+// ---- Invoice Spacing (0–20px) ----
 export function getMargin(): MarginSetting {
-  return (localStorage.getItem(KEYS.margin) as MarginSetting) || 'default';
+  const v = parseInt(localStorage.getItem(KEYS.margin) || '0');
+  return Math.max(0, Math.min(20, isNaN(v) ? 0 : v));
 }
 export function setMargin(m: MarginSetting) {
-  localStorage.setItem(KEYS.margin, m);
+  const value = Math.max(0, Math.min(20, Number(m) || 0));
+  localStorage.setItem(KEYS.margin, String(value));
   syncToCloud();
 }
 
@@ -112,12 +115,14 @@ export function saveSettingsBatch(settings: {
   storeAddress: string;
   storeGstin: string;
   margin: MarginSetting;
+  qrSize: number;
 }) {
   localStorage.setItem(KEYS.storeName, settings.storeName);
   localStorage.setItem(KEYS.storePhone, settings.storePhone);
   localStorage.setItem(KEYS.storeAddress, settings.storeAddress);
   localStorage.setItem(KEYS.storeGstin, settings.storeGstin);
-  localStorage.setItem(KEYS.margin, settings.margin);
+  localStorage.setItem(KEYS.margin, String(settings.margin));
+  localStorage.setItem(KEYS.qrSize, Math.max(20, Math.min(100, settings.qrSize)).toString());
   syncToCloud();
 }
 
@@ -130,6 +135,15 @@ export function setBillPrefix(v: string) { localStorage.setItem(KEYS.billPrefix,
 export function getBillCounter(): number { return parseInt(localStorage.getItem(KEYS.billCounter) || '0'); }
 export function setBillCounter(v: number) { localStorage.setItem(KEYS.billCounter, v.toString()); syncToCloud(); }
 
+// ---- QR Size (20–100px) ----
+export function getQrSize(): number {
+  const v = parseInt(localStorage.getItem(KEYS.qrSize) || '80');
+  return Math.max(20, Math.min(100, isNaN(v) ? 80 : v));
+}
+export function setQrSize(v: number) {
+  localStorage.setItem(KEYS.qrSize, Math.max(20, Math.min(100, v)).toString());
+}
+
 // ---- Dark Mode (local only — not synced) ----
 export function getDarkMode(): boolean {
   return localStorage.getItem(KEYS.darkMode) === '1';
@@ -139,43 +153,74 @@ export function setDarkMode(on: boolean) {
 }
 
 // ---- Default Template ----
-const DEFAULT_TEMPLATE = `<div style="font-family: 'Courier New', Courier, monospace; width: 48mm; margin: 0 auto; padding: 4mm 0; color: #000; font-size: 11px; line-height: 1.4;">
-  <div style="text-align: center; padding-bottom: 6px; border-bottom: 1px dashed #000;">
-    <p style="font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 1px;">{{STORE_NAME}}</p>
-    <p style="font-size: 9px; margin: 2px 0 0 0;">{{STORE_ADDRESS}}</p>
-    <p style="font-size: 9px; margin: 2px 0 0 0;">Ph: {{STORE_PHONE}}</p>
-    <p style="font-size: 8px; margin: 2px 0 0 0;">GSTIN: {{STORE_GSTIN}}</p>
-  </div>
-  <div style="padding: 6px 0; border-bottom: 1px dashed #000; font-size: 10px;">
-    <table style="width: 100%; border-collapse: collapse;">
-      <tr><td style="padding: 1px 0;">Bill No:</td><td style="padding: 1px 0; text-align: right; font-weight: 700;">#{{BILL_NO}}</td></tr>
-      <tr><td style="padding: 1px 0;">Date:</td><td style="padding: 1px 0; text-align: right;">{{DATE}}</td></tr>
-      <tr><td style="padding: 1px 0;">Time:</td><td style="padding: 1px 0; text-align: right;">{{TIME}}</td></tr>
-      <tr><td style="padding: 1px 0;">Customer:</td><td style="padding: 1px 0; text-align: right;">{{CUSTOMER_NAME}}</td></tr>
-    </table>
-  </div>
-  <table style="width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; margin: 0;">
-    <colgroup><col style="width: 46%;"><col style="width: 16%;"><col style="width: 18%;"><col style="width: 20%;"></colgroup>
+const DEFAULT_TEMPLATE = `<div style="font-family:'Courier New',Courier,monospace;width:48mm;margin:0 auto;padding:0;color:#000;font-size:10px;line-height:1.25;">
+  <p style="text-align:center;font-size:14px;font-weight:700;margin:0;letter-spacing:0.8px;">{{STORE_NAME}}</p>
+  <p style="text-align:center;font-size:9px;margin:1px 0 0;">{{STORE_ADDRESS}}</p>
+  <p style="text-align:center;font-size:9px;margin:1px 0 0;">Ph: {{STORE_PHONE}}</p>
+  <p style="text-align:center;font-size:8px;margin:1px 0 0;">GSTIN: {{STORE_GSTIN}}</p>
+
+  <div style="border-top:1px dashed #000;height:0;margin:5px 0 4px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
+    <tr><td style="padding:1px 0;">Bill No:</td><td style="padding:1px 0;text-align:right;font-weight:700;">#{{BILL_NO}}</td></tr>
+    <tr><td style="padding:1px 0;">Date:</td><td style="padding:1px 0;text-align:right;">{{DATE}}</td></tr>
+    <tr><td style="padding:1px 0;">Time:</td><td style="padding:1px 0;text-align:right;">{{TIME}}</td></tr>
+    <tr><td style="padding:1px 0;">Customer:</td><td style="padding:1px 0;text-align:right;white-space:nowrap;">{{CUSTOMER_NAME}}</td></tr>
+  </table>
+
+  <div style="border-top:1px dashed #000;height:0;margin:4px 0 3px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
+    <colgroup>
+      <col style="width:52%;" />
+      <col style="width:14%;" />
+      <col style="width:17%;" />
+      <col style="width:17%;" />
+    </colgroup>
     <thead>
-      <tr style="border-bottom: 1px dashed #000;">
-        <th style="padding: 4px 0 5px 0; text-align: left; font-weight: 700; font-size: 9px;">ITEM</th>
-        <th style="padding: 4px 0 5px 0; text-align: center; font-weight: 700; font-size: 9px;">QTY</th>
-        <th style="padding: 4px 0 5px 0; text-align: right; font-weight: 700; font-size: 9px;">RATE</th>
-        <th style="padding: 4px 0 5px 0; text-align: right; font-weight: 700; font-size: 9px;">AMT</th>
+      <tr>
+        <td style="font-weight:700;padding:0 0 1px 0;">ITEM</td>
+        <td style="font-weight:700;text-align:right;padding:0 3px 1px 0;">QTY</td>
+        <td style="font-weight:700;text-align:right;padding:0 4px 1px 0;">RATE</td>
+        <td style="font-weight:700;text-align:right;padding:0 0 1px 4px;">AMT</td>
       </tr>
     </thead>
-    <tbody>{{ITEMS}}</tbody>
   </table>
-  <div style="border-top: 1px dashed #000; padding: 6px 0; border-bottom: 1px dashed #000;">
-    <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-      <tr><td style="padding: 2px 0;">Items:</td><td style="padding: 2px 0; text-align: right;">{{TOTAL_ITEMS}}</td></tr>
-      <tr><td style="padding: 2px 0;">Qty:</td><td style="padding: 2px 0; text-align: right;">{{TOTAL_QTY}}</td></tr>
-      <tr><td style="padding: 4px 0; font-size: 13px; font-weight: 700;">TOTAL</td><td style="padding: 4px 0; font-size: 13px; font-weight: 700; text-align: right;">Rs.{{TOTAL}}</td></tr>
-    </table>
-  </div>
+
+  <div style="border-top:1px dashed #000;height:0;margin:1px 0 2px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
+    <colgroup>
+      <col style="width:52%;" />
+      <col style="width:14%;" />
+      <col style="width:17%;" />
+      <col style="width:17%;" />
+    </colgroup>
+    <tbody>
+      {{ITEMS}}
+    </tbody>
+  </table>
+
+  <div style="border-top:1px dashed #000;height:0;margin:4px 0 3px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed;">
+    <tr><td style="padding:1px 0;">Items:</td><td style="padding:1px 0;text-align:right;">{{TOTAL_ITEMS}}</td></tr>
+    <tr><td style="padding:1px 0;">Qty:</td><td style="padding:1px 0;text-align:right;">{{TOTAL_QTY}}</td></tr>
+  </table>
+
+  <div style="border-top:1px dashed #000;height:0;margin:4px 0 3px;"></div>
+
+  <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+    <tr>
+      <td style="font-size:12px;font-weight:700;padding:1px 0;">TOTAL</td>
+      <td style="font-size:12px;font-weight:700;text-align:right;padding:1px 0;">Rs.{{TOTAL}}</td>
+    </tr>
+  </table>
+
+  <div style="border-top:1px dashed #000;height:0;margin:4px 0 5px;"></div>
+
   {{BILL_BARCODE}}
-  <div style="text-align: center; padding-top: 6px; font-size: 9px;">
-    <p style="margin: 0;">Thank you! Visit again.</p>
-    <p style="margin: 2px 0 0 0; font-size: 8px; color: #666;">Prices incl. of taxes</p>
-  </div>
+
+  <p style="text-align:center;font-size:9px;margin:5px 0 0;">Thank you! Visit again.</p>
+  <p style="text-align:center;font-size:8px;margin:1px 0 0;color:#666;">Prices incl. of taxes</p>
 </div>`;

@@ -32,9 +32,9 @@ export async function generateQrCode(billNo: string): Promise<string> {
 /**
  * Returns centered QR code HTML for embedding in invoice.
  */
-export async function getQrHtml(billNo: string): Promise<string> {
+export async function getQrHtml(billNo: string, sizePx: number = 80): Promise<string> {
   const src = await generateQrCode(billNo);
   if (!src) return '';
   const value = formatQrValue(billNo);
-  return `<div style="text-align:center;margin:10px 0 4px 0;"><img src="${src}" style="display:block;margin:0 auto;width:100px;height:100px;" alt="QR" /><p style="font-size:8px;color:#888;margin:3px 0 0 0;font-family:monospace;">${value}</p></div>`;
+  return `<div style="text-align:center;margin:6px 0 2px 0;"><img src="${src}" style="display:block;margin:0 auto;width:${sizePx}px;height:${sizePx}px;" /><p style="font-size:8px;color:#666;margin:4px 0 0 0;font-family:monospace;letter-spacing:0.4px;">${value}</p></div>`;
 }
