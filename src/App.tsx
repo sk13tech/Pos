@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { TabId } from './types';
 import TabBar from './components/TabBar';
 import CreateBill from './components/CreateBill';
+import BillHistory from './components/BillHistory';
 import Inventory from './components/Inventory';
 import Template from './components/Template';
 import SettingsPanel from './components/SettingsPanel';
@@ -25,6 +26,7 @@ export function useCartLock() { return useContext(CartContext); }
 
 const titles: Record<TabId, string> = {
   create: 'Billing',
+  history: 'History',
   inventory: 'Inventory',
   template: 'Template',
   settings: 'Settings',
@@ -74,6 +76,7 @@ export default function App() {
 
           <main className="px-4 pb-[100px] max-w-lg mx-auto pt-2">
             {tab === 'create' && <CreateBill />}
+            {tab === 'history' && <BillHistory />}
             {tab === 'inventory' && <Inventory />}
             {tab === 'template' && <Template />}
             {tab === 'settings' && <SettingsPanel />}

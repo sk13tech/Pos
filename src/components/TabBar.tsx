@@ -1,8 +1,9 @@
-import { ReceiptText, Box, FileCode, Settings } from 'lucide-react';
+import { ReceiptText, ClockArrowUp, Box, FileCode, Settings } from 'lucide-react';
 import { TabId } from '../types';
 
 const tabs: { id: TabId; label: string; Icon: React.FC<{ size: number; strokeWidth: number; className?: string }> }[] = [
   { id: 'create', label: 'Billing', Icon: ReceiptText },
+  { id: 'history', label: 'History', Icon: ClockArrowUp },
   { id: 'inventory', label: 'Inventory', Icon: Box },
   { id: 'template', label: 'Template', Icon: FileCode },
   { id: 'settings', label: 'Settings', Icon: Settings },

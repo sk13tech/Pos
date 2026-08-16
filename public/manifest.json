@@ -1,11 +1,11 @@
 {
-  "name": "Pos",
-  "short_name": "Pos",
+  "name": "Retail Panel",
+  "short_name": "Retail",
   "description": "POS Billing & Inventory System",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f2f2f7",
-  "theme_color": "#007AFF",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "portrait",
   "icons": [
     {

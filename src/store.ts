@@ -55,12 +55,24 @@ export function saveBillsBulk(bills: Bill[]) {
   syncToCloud();
 }
 
-// ---- Bill Counter (no individual sync — synced when saveBill follows) ----
+// ---- Random 4-digit Invoice No (non-repeating) ----
 export function getNextBillNo(): string {
-  const c = parseInt(localStorage.getItem(KEYS.billCounter) || '0') + 1;
-  localStorage.setItem(KEYS.billCounter, c.toString());
-  const prefix = getBillPrefix();
-  return prefix + c.toString().padStart(4, '0');
+  const used = new Set(getBills().map((b) => b.billNo));
+
+  // 4-digit range: 1000–9999
+  for (let i = 0; i < 10000; i++) {
+    const candidate = String(Math.floor(1000 + Math.random() * 9000));
+    if (!used.has(candidate)) {
+      // store last generated value only for backup/reference
+      localStorage.setItem(KEYS.billCounter, candidate);
+      return candidate;
+    }
+  }
+
+  // Fallback if all 4-digit numbers are exhausted
+  const fallback = String(Date.now()).slice(-4);
+  localStorage.setItem(KEYS.billCounter, fallback);
+  return fallback;
 }
 
 // ---- Export / Import (file backup) ----

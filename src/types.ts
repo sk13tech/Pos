@@ -21,6 +21,6 @@ export interface Bill {
   total: number;
 }
 
-export type TabId = 'create' | 'inventory' | 'template' | 'settings';
+export type TabId = 'create' | 'history' | 'inventory' | 'template' | 'settings';
 
 export type MarginSetting = number;

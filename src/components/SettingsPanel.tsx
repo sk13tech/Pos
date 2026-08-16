@@ -21,6 +21,7 @@ import {
 import { MarginSetting } from '../types';
 import { googleSignIn, googleSignOut, syncToCloudNow } from '../firebase';
 import { useAuth } from '../App';
+import { applyThemeChrome } from '../theme';
 import Toast from './Toast';
 import ActionSheet from './ActionSheet';
 
@@ -52,6 +53,7 @@ export default function SettingsPanel() {
     setDark(n);
     setDarkMode(n);
     document.documentElement.classList.toggle('dark', n);
+    applyThemeChrome(n);
   };
 
   const handleLogin = async () => {

@@ -3,11 +3,14 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { getDarkMode } from "./store";
+import { applyThemeChrome } from "./theme";
 
 // Apply dark mode
-if (getDarkMode()) {
+const initialDark = getDarkMode();
+if (initialDark) {
   document.documentElement.classList.add('dark');
 }
+applyThemeChrome(initialDark);
 
 // Render app
 createRoot(document.getElementById("root")!).render(
