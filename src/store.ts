@@ -54,6 +54,11 @@ export function saveBillsBulk(bills: Bill[]) {
   localStorage.setItem(KEYS.bills, JSON.stringify(bills));
   syncToCloud();
 }
+export function deleteBill(id: string) {
+  const next = getBills().filter((bill) => bill.id !== id);
+  localStorage.setItem(KEYS.bills, JSON.stringify(next));
+  syncToCloud();
+}
 
 // ---- Random 4-digit Invoice No (non-repeating) ----
 export function getNextBillNo(): string {

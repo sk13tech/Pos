@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Search, X, Receipt, ImageDown, FileDown, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Search, X, Receipt, ImageDown, FileDown, Loader2, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react';
 import { Bill } from '../types';
-import { getBills, getTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin, getQrSize, getMargin } from '../store';
+import { deleteBill, getBills, getTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin, getQrSize, getMargin } from '../store';
 import { getQrHtml } from '../barcode';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import Toast from './Toast';
+import ActionSheet from './ActionSheet';
 
 export default function BillHistory() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Bill | null>(null);
+  const [deleting, setDeleting] = useState<Bill | null>(null);
   const [exporting, setExporting] = useState<'image' | 'pdf' | null>(null);
   const [toast, setToast] = useState('');
   const [tt, setTT] = useState<'success' | 'error' | 'info'>('success');
@@ -29,13 +31,21 @@ export default function BillHistory() {
       )
     : bills;
 
-  // Rebuild invoice HTML from saved bill data
+  const confirmDelete = () => {
+    if (!deleting) return;
+    deleteBill(deleting.id);
+    setBills(prev => prev.filter(b => b.id !== deleting.id));
+    if (selected?.id === deleting.id) setSelected(null);
+    notify(`Deleted invoice #${deleting.billNo}`, 'info');
+    setDeleting(null);
+  };
+
   const rebuildHtml = async (bill: Bill) => {
     const tpl = getTemplate();
     const qrHtml = await getQrHtml(bill.billNo, getQrSize());
 
     const itemsHtml = bill.items.map((item) =>
-      `<tr><td colspan="4" style="padding:3px 0 0 0;">${item.product.item}</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">${item.qty}</td><td style="text-align:right;padding:0 4px 3px 0;">${item.product.rate.toFixed(2)}</td><td style="text-align:right;padding:0 0 3px 4px;">${(item.product.rate * item.qty).toFixed(2)}</td></tr>`
+      `<tr><td colspan="4">${item.product.item}</td></tr><tr><td></td><td style="text-align:right;">${item.qty}</td><td style="text-align:right;">${item.product.rate.toFixed(2)}</td><td style="text-align:right;">${(item.product.rate * item.qty).toFixed(2)}</td></tr>`
     ).join('');
 
     return tpl
@@ -54,7 +64,6 @@ export default function BillHistory() {
       .replace(/\{\{BILL_BARCODE\}\}/g, qrHtml);
   };
 
-  // Capture invoice in iframe
   const captureInvoice = (invoiceHtml: string): Promise<HTMLCanvasElement> => {
     return new Promise((resolve, reject) => {
       const iframe = document.createElement('iframe');
@@ -135,27 +144,32 @@ export default function BillHistory() {
     finally { setExporting(null); }
   };
 
-  // Detail view
   if (selected) {
     return (
       <div className="space-y-5">
-        {/* Back */}
         <button onClick={() => setSelected(null)} className="inline-flex items-center gap-1 text-[17px] text-[#007AFF] active:opacity-60">
           <ChevronLeft size={18} strokeWidth={2.2} />
           <span>Back</span>
         </button>
 
-        {/* Bill Card */}
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: '0.5px solid var(--sep)' }}>
-            <div className="flex items-center justify-between">
-              <span className="text-[20px] font-bold text-black dark:text-white">#{selected.billNo}</span>
-              <span className="text-[13px] text-[#8e8e93]">{selected.date} · {selected.time}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-[20px] font-bold text-black dark:text-white">#{selected.billNo}</span>
+                <p className="text-[15px] text-[#8e8e93] mt-1 truncate">{selected.customerName}</p>
+              </div>
+              <button
+                onClick={() => setDeleting(selected)}
+                className="w-[34px] h-[34px] rounded-[8px] flex items-center justify-center bg-[#fff3f2] dark:bg-[#3a1f1d] text-[#FF3B30] active:opacity-70 flex-shrink-0"
+                aria-label="Delete invoice"
+              >
+                <Trash2 size={17} />
+              </button>
             </div>
-            <p className="text-[15px] text-[#8e8e93] mt-1">{selected.customerName}</p>
+            <p className="text-[13px] text-[#8e8e93] mt-1">{selected.date} · {selected.time}</p>
           </div>
 
-          {/* Items */}
           <div className="px-4 py-2" style={{ borderBottom: '0.5px solid var(--sep)' }}>
             <div className="flex items-center py-1">
               <span className="flex-1 text-[11px] font-semibold text-[#8e8e93] uppercase tracking-wide">Item</span>
@@ -173,14 +187,12 @@ export default function BillHistory() {
             ))}
           </div>
 
-          {/* Total */}
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-[17px] font-semibold text-black dark:text-white">Total</span>
             <span className="text-[20px] font-bold text-black dark:text-white tabular-nums">₹{selected.total.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Download Actions */}
         <div className="space-y-[10px]">
           <button onClick={() => downloadImage(selected)} disabled={!!exporting}
             className="w-full bg-[#007AFF] text-white text-[17px] font-semibold rounded-[10px] py-[14px] flex items-center justify-center gap-2 active:bg-[#0066d6] disabled:opacity-60">
@@ -192,15 +204,21 @@ export default function BillHistory() {
           </button>
         </div>
 
+        <ActionSheet
+          open={!!deleting}
+          title="Delete Invoice"
+          message={deleting ? `Delete invoice #${deleting.billNo}? This cannot be undone.` : ''}
+          actions={[{ label: 'Delete Invoice', destructive: true, onClick: confirmDelete }]}
+          onCancel={() => setDeleting(null)}
+        />
+
         <Toast message={toast} type={tt} />
       </div>
     );
   }
 
-  // List view
   return (
     <div className="space-y-5">
-      {/* Search */}
       <div className="flex items-center bg-[#e5e5ea] dark:bg-[#1c1c1e] rounded-[10px] px-3 py-[9px]">
         <Search size={16} className="text-[#8e8e93] mr-2" />
         <input type="text" placeholder="Search by bill #, customer, or date" value={query} onChange={e => setQuery(e.target.value)}
@@ -212,7 +230,6 @@ export default function BillHistory() {
         )}
       </div>
 
-      {/* Bill List */}
       <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
         {bills.length === 0 ? (
           <div className="py-12 text-center">
@@ -226,22 +243,37 @@ export default function BillHistory() {
           </div>
         ) : (
           filtered.map((bill, i) => (
-            <button key={bill.id} onClick={() => setSelected(bill)}
-              className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] text-left"
-              style={i < filtered.length - 1 ? { borderBottom: '0.5px solid var(--sep)' } : {}}>
-              <div className="flex-1 min-w-0">
+            <div key={bill.id} className="flex items-center px-4 py-[11px]" style={i < filtered.length - 1 ? { borderBottom: '0.5px solid var(--sep)' } : {}}>
+              <button onClick={() => setSelected(bill)} className="flex-1 min-w-0 text-left active:opacity-70">
                 <div className="flex items-center gap-2">
                   <span className="text-[17px] font-semibold text-black dark:text-white">#{bill.billNo}</span>
                   <span className="text-[13px] text-[#8e8e93]">{bill.date}</span>
                 </div>
                 <p className="text-[14px] text-[#8e8e93] truncate mt-0.5">{bill.customerName} · {bill.items.length} items</p>
-              </div>
+              </button>
               <span className="text-[17px] font-semibold text-black dark:text-white tabular-nums ml-3">₹{bill.total.toFixed(2)}</span>
-              <ChevronRight size={18} className="text-[#c7c7cc] ml-1" />
-            </button>
+              <button
+                onClick={() => setDeleting(bill)}
+                className="ml-2 w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[#FF3B30] active:opacity-70"
+                aria-label="Delete invoice"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button onClick={() => setSelected(bill)} className="ml-1 w-[24px] h-[24px] flex items-center justify-center active:opacity-70">
+                <ChevronRight size={18} className="text-[#c7c7cc]" />
+              </button>
+            </div>
           ))
         )}
       </div>
+
+      <ActionSheet
+        open={!!deleting}
+        title="Delete Invoice"
+        message={deleting ? `Delete invoice #${deleting.billNo}? This cannot be undone.` : ''}
+        actions={[{ label: 'Delete Invoice', destructive: true, onClick: confirmDelete }]}
+        onCancel={() => setDeleting(null)}
+      />
 
       <Toast message={toast} type={tt} />
     </div>
