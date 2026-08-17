@@ -1,4 +1,4 @@
-import { Product, Bill, MarginSetting } from './types';
+import { Product, Bill, MarginSetting, TemplateSlot } from './types';
 import { syncToCloud } from './firebase';
 
 // Cloud is the real storage.
@@ -8,6 +8,8 @@ import { syncToCloud } from './firebase';
 const KEYS = {
   inventory: 'retail_panel_inventory',
   template: 'retail_panel_template',
+  templates: 'retail_panel_templates',
+  activeTemplateId: 'retail_panel_active_template_id',
   bills: 'retail_panel_bills',
   billCounter: 'retail_panel_bill_counter',
   darkMode: 'retail_panel_dark',
@@ -31,13 +33,104 @@ export function setInventory(products: Product[]) {
   syncToCloud();
 }
 
-// ---- Template ----
-export function getTemplate(): string {
-  return localStorage.getItem(KEYS.template) || DEFAULT_TEMPLATE;
+// ---- Templates (3 slots + active/default) ----
+const DEFAULT_TEMPLATE_2 = `<div style="font-family:Arial,sans-serif;width:58mm;margin:0 auto;padding:0;color:#111;font-size:10px;line-height:1.35;">
+  <div style="text-align:center;border-bottom:1px solid #000;padding-bottom:4px;margin-bottom:4px;">
+    <div style="font-size:13px;font-weight:700;">{{STORE_NAME}}</div>
+    <div style="font-size:9px;">{{STORE_ADDRESS}}</div>
+    <div style="font-size:9px;">Phone: {{STORE_PHONE}}</div>
+    <div style="font-size:8px;">GSTIN: {{STORE_GSTIN}}</div>
+  </div>
+  <table style="width:100%;font-size:10px;border-collapse:collapse;margin-bottom:4px;">
+    <tr><td>Bill:</td><td style="text-align:right;font-weight:700;">#{{BILL_NO}}</td></tr>
+    <tr><td>Date:</td><td style="text-align:right;">{{DATE}}</td></tr>
+    <tr><td>Time:</td><td style="text-align:right;">{{TIME}}</td></tr>
+    <tr><td>Customer:</td><td style="text-align:right;white-space:nowrap;">{{CUSTOMER_NAME}}</td></tr>
+  </table>
+  <table style="width:100%;font-size:10px;border-collapse:collapse;">
+    <thead><tr style="border-bottom:1px solid #000;"><th style="text-align:left;padding-bottom:2px;">ITEM</th><th style="text-align:right;padding-bottom:2px;">QTY</th><th style="text-align:right;padding-bottom:2px;">RATE</th><th style="text-align:right;padding-bottom:2px;">AMT</th></tr></thead>
+    <tbody>{{ITEMS}}</tbody>
+  </table>
+  <div style="border-top:1px solid #000;margin:4px 0;"></div>
+  <table style="width:100%;font-size:10px;border-collapse:collapse;">
+    <tr><td>Items</td><td style="text-align:right;">{{TOTAL_ITEMS}}</td></tr>
+    <tr><td>Qty</td><td style="text-align:right;">{{TOTAL_QTY}}</td></tr>
+    <tr><td style="font-weight:700;font-size:12px;padding-top:3px;">TOTAL</td><td style="text-align:right;font-weight:700;font-size:12px;padding-top:3px;">Rs.{{TOTAL}}</td></tr>
+  </table>
+  {{BILL_BARCODE}}
+</div>`;
+
+const DEFAULT_TEMPLATE_3 = `<div style="font-family:'Courier New',monospace;width:48mm;margin:0 auto;padding:0;color:#000;font-size:10px;line-height:1.2;">
+  <div style="text-align:center;">
+    <div style="font-size:13px;font-weight:700;">{{STORE_NAME}}</div>
+    <div style="font-size:8px;">{{STORE_PHONE}}</div>
+  </div>
+  <div style="border-top:1px dashed #000;margin:4px 0;"></div>
+  <div style="font-size:9px;">Bill #{{BILL_NO}}</div>
+  <div style="font-size:9px;">{{DATE}} {{TIME}}</div>
+  <div style="font-size:9px;margin-bottom:4px;white-space:nowrap;">{{CUSTOMER_NAME}}</div>
+  <div style="border-top:1px dashed #000;margin:4px 0;"></div>
+  <table style="width:100%;font-size:9px;border-collapse:collapse;">
+    <thead><tr><th style="text-align:left;">ITEM</th><th style="text-align:right;">QTY</th><th style="text-align:right;">AMT</th></tr></thead>
+    <tbody>{{ITEMS}}</tbody>
+  </table>
+  <div style="border-top:1px dashed #000;margin:4px 0;"></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;"><span>TOTAL</span><span>Rs.{{TOTAL}}</span></div>
+  {{BILL_BARCODE}}
+</div>`;
+
+function getDefaultTemplates(): TemplateSlot[] {
+  return [
+    { id: 'template-1', name: 'Thermal', html: DEFAULT_TEMPLATE },
+    { id: 'template-2', name: 'Clean', html: DEFAULT_TEMPLATE_2 },
+    { id: 'template-3', name: 'Compact', html: DEFAULT_TEMPLATE_3 },
+  ];
 }
-export function setTemplate(t: string) {
-  localStorage.setItem(KEYS.template, t);
+
+export function getTemplates(): TemplateSlot[] {
+  const raw = localStorage.getItem(KEYS.templates);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as TemplateSlot[];
+      if (Array.isArray(parsed) && parsed.length === 3) return parsed;
+    } catch {}
+  }
+  // migrate old single template if present
+  const oldTemplate = localStorage.getItem(KEYS.template);
+  const defaults = getDefaultTemplates();
+  if (oldTemplate) defaults[0].html = oldTemplate;
+  localStorage.setItem(KEYS.templates, JSON.stringify(defaults));
+  if (!localStorage.getItem(KEYS.activeTemplateId)) {
+    localStorage.setItem(KEYS.activeTemplateId, defaults[0].id);
+  }
+  return defaults;
+}
+
+export function saveTemplates(templates: TemplateSlot[]) {
+  localStorage.setItem(KEYS.templates, JSON.stringify(templates));
   syncToCloud();
+}
+
+export function getActiveTemplateId(): string {
+  return localStorage.getItem(KEYS.activeTemplateId) || 'template-1';
+}
+
+export function setActiveTemplateId(id: string) {
+  localStorage.setItem(KEYS.activeTemplateId, id);
+  syncToCloud();
+}
+
+export function getTemplate(): string {
+  const templates = getTemplates();
+  const active = templates.find(t => t.id === getActiveTemplateId()) || templates[0];
+  return active.html;
+}
+
+export function setTemplate(t: string) {
+  const templates = getTemplates().map(template =>
+    template.id === getActiveTemplateId() ? { ...template, html: t } : template
+  );
+  saveTemplates(templates);
 }
 
 // ---- Bills ----

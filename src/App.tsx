@@ -32,12 +32,17 @@ const titles: Record<TabId, string> = {
   settings: 'Settings',
 };
 
+const TAB_ORDER: TabId[] = ['create', 'history', 'inventory', 'template', 'settings'];
+
 export default function App() {
   const [tab, setTab] = useState<TabId>('create');
   const [user, setUser] = useState<User | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [pendingTab, setPendingTab] = useState<TabId | null>(null);
+  const [animClass, setAnimClass] = useState('');
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = onAuthChange(async (u) => {
@@ -51,20 +56,59 @@ export default function App() {
     return unsub;
   }, []);
 
+  const switchTab = (newTab: TabId) => {
+    if (newTab === tab) return;
+    const currentIndex = TAB_ORDER.indexOf(tab);
+    const nextIndex = TAB_ORDER.indexOf(newTab);
+    setAnimClass(nextIndex > currentIndex ? 'tab-slide-left' : 'tab-slide-right');
+    setTab(newTab);
+  };
+
   const handleTabChange = (newTab: TabId) => {
     if (newTab === tab) return;
     if (tab === 'create' && cartCount > 0) {
       setPendingTab(newTab);
       return;
     }
-    setTab(newTab);
+    switchTab(newTab);
   };
 
   const confirmLeave = () => {
     const t = pendingTab;
     setPendingTab(null);
-    if (t) setTab(t);
+    if (t) switchTab(t);
   };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStartX(touch.clientX);
+    setTouchStartY(touch.clientY);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null || touchStartY === null) return;
+    const touch = e.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    setTouchStartX(null);
+    setTouchStartY(null);
+
+    if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+    const currentIndex = TAB_ORDER.indexOf(tab);
+    if (deltaX < 0 && currentIndex < TAB_ORDER.length - 1) {
+      handleTabChange(TAB_ORDER[currentIndex + 1]);
+    }
+    if (deltaX > 0 && currentIndex > 0) {
+      handleTabChange(TAB_ORDER[currentIndex - 1]);
+    }
+  };
+
+  useEffect(() => {
+    if (!animClass) return;
+    const timer = setTimeout(() => setAnimClass(''), 280);
+    return () => clearTimeout(timer);
+  }, [animClass]);
 
   return (
     <AuthContext.Provider value={{ user, restoring }}>
@@ -74,12 +118,14 @@ export default function App() {
             <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight pt-4">{titles[tab]}</h1>
           </header>
 
-          <main className="px-4 pb-[100px] max-w-lg mx-auto pt-2">
-            {tab === 'create' && <CreateBill />}
-            {tab === 'history' && <BillHistory />}
-            {tab === 'inventory' && <Inventory />}
-            {tab === 'template' && <Template />}
-            {tab === 'settings' && <SettingsPanel />}
+          <main className="px-4 pb-[100px] max-w-lg mx-auto pt-2 overflow-x-hidden select-none" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+            <div key={tab} className={animClass}>
+              {tab === 'create' && <CreateBill />}
+              {tab === 'history' && <BillHistory />}
+              {tab === 'inventory' && <Inventory />}
+              {tab === 'template' && <Template />}
+              {tab === 'settings' && <SettingsPanel />}
+            </div>
           </main>
 
           <TabBar active={tab} onChange={handleTabChange} />

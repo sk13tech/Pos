@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Save, Eye, EyeOff, Copy, Check, ChevronRight } from 'lucide-react';
-import { getTemplate, setTemplate, getStoreName, getStorePhone, getStoreAddress, getStoreGstin, getQrSize, getMargin } from '../store';
+import { Save, Eye, EyeOff, Copy, Check, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { TemplateSlot } from '../types';
+import {
+  getTemplate,
+  getTemplates,
+  saveTemplates,
+  getActiveTemplateId,
+  setActiveTemplateId,
+  getStoreName,
+  getStorePhone,
+  getStoreAddress,
+  getStoreGstin,
+  getQrSize,
+  getMargin,
+} from '../store';
 import { getQrHtml } from '../barcode';
 import Toast from './Toast';
 
@@ -23,7 +36,10 @@ const VARS = [
 const SAMPLE_ITEMS = `<tr><td colspan="4" style="padding:3px 0 0 0;">Amul Butter (500g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">2</td><td style="text-align:right;padding:0 4px 3px 0;">270.00</td><td style="text-align:right;padding:0 0 3px 4px;">540.00</td></tr><tr><td colspan="4" style="padding:3px 0 0 0;">Red Label Tea (500g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">1</td><td style="text-align:right;padding:0 4px 3px 0;">235.00</td><td style="text-align:right;padding:0 0 3px 4px;">235.00</td></tr><tr><td colspan="4" style="padding:3px 0 0 0;">Parle-G Biscuit (250g)</td></tr><tr><td style="padding:0 0 3px 0;"></td><td style="text-align:right;padding:0 3px 3px 0;">3</td><td style="text-align:right;padding:0 4px 3px 0;">20.00</td><td style="text-align:right;padding:0 0 3px 4px;">60.00</td></tr>`;
 
 export default function Template() {
-  const [html, setHtml] = useState('');
+  const [templates, setTemplatesState] = useState<TemplateSlot[]>(getTemplates());
+  const [activeId, setActiveIdState] = useState(getActiveTemplateId());
+  const [selectedId, setSelectedId] = useState(getActiveTemplateId());
+  const [html, setHtml] = useState(getTemplate());
   const [preview, setPreview] = useState(false);
   const [showVars, setShowVars] = useState(false);
   const [toast, setToast] = useState('');
@@ -31,9 +47,15 @@ export default function Template() {
   const [copied, setCopied] = useState('');
   const [previewHtml, setPreviewHtml] = useState('');
 
-  useEffect(() => { setHtml(getTemplate()); }, []);
+  useEffect(() => {
+    const fresh = getTemplates();
+    const active = getActiveTemplateId();
+    setTemplatesState(fresh);
+    setActiveIdState(active);
+    setSelectedId(active);
+    setHtml(fresh.find(t => t.id === active)?.html || getTemplate());
+  }, []);
 
-  // Build preview when toggled or html changes
   useEffect(() => {
     if (!preview) return;
     (async () => {
@@ -57,12 +79,32 @@ export default function Template() {
   }, [preview, html]);
 
   const notify = (m: string, t: 'success'|'error'|'info' = 'success') => { setToast(m); setTT(t); setTimeout(() => setToast(''), 2500); };
-  const save = () => { setTemplate(html); notify('Template saved'); };
+
+  const save = () => {
+    const next = templates.map(t => t.id === selectedId ? { ...t, html } : t);
+    setTemplatesState(next);
+    saveTemplates(next);
+    notify('Template saved');
+  };
+
+  const setDefaultTemplate = () => {
+    setActiveTemplateId(selectedId);
+    setActiveIdState(selectedId);
+    notify('Set as default template', 'success');
+  };
+
+  const selectTemplate = (id: string) => {
+    const next = templates.map(t => t.id === selectedId ? { ...t, html } : t);
+    setTemplatesState(next);
+    setSelectedId(id);
+    const selected = next.find(t => t.id === id);
+    if (selected) setHtml(selected.html);
+  };
+
   const cp = (n: string) => { navigator.clipboard.writeText(n); setCopied(n); setTimeout(() => setCopied(''), 1200); };
 
   return (
     <div className="space-y-5">
-      {/* Controls */}
       <div>
         <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Controls</p>
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
@@ -75,14 +117,45 @@ export default function Template() {
             <span className="text-[17px] text-[#007AFF] flex-1 text-left">{preview ? 'Show Editor' : 'Preview Invoice'}</span>
             <ChevronRight size={18} className="text-[#c7c7cc]" />
           </button>
-          <button onClick={save} className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]">
+          <button onClick={save} className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]" style={{borderBottom:'0.5px solid var(--sep)'}}>
             <Save size={20} className="text-[#007AFF] mr-3" />
             <span className="text-[17px] text-[#007AFF] flex-1 text-left font-semibold">Save Template</span>
+          </button>
+          <button onClick={setDefaultTemplate} className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]">
+            <CheckCircle2 size={20} className="text-[#34C759] mr-3" />
+            <span className="text-[17px] text-[#34C759] flex-1 text-left font-semibold">Set as Default</span>
           </button>
         </div>
       </div>
 
-      {/* Variables */}
+      <div>
+        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Templates</p>
+        <div className="bg-[#f2f2f7] dark:bg-[#2c2c2e] rounded-[12px] p-[3px] flex gap-[3px]">
+          {templates.map((template) => {
+            const isSelected = template.id === selectedId;
+            const isDefault = template.id === activeId;
+            return (
+              <button
+                key={template.id}
+                onClick={() => selectTemplate(template.id)}
+                className={`relative flex-1 min-w-0 rounded-[10px] px-2 py-[9px] text-center transition-colors ${
+                  isSelected
+                    ? 'bg-white dark:bg-[#3a3a3c]'
+                    : 'bg-transparent'
+                }`}
+              >
+                <div className={`text-[14px] font-medium truncate ${isSelected ? 'text-black dark:text-white' : 'text-[#8e8e93]'}`}>
+                  {template.name}
+                </div>
+                {isDefault && (
+                  <span className="absolute top-[6px] right-[8px] w-[7px] h-[7px] rounded-full bg-[#34C759]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {showVars && (
         <div>
           <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Variables — Tap to Copy</p>
@@ -98,20 +171,15 @@ export default function Template() {
                   <code className="text-[15px] font-mono font-semibold text-black dark:text-white">{v.name}</code>
                   <p className="text-[13px] text-[#8e8e93]">{v.desc}</p>
                 </div>
-                {copied === v.name
-                  ? <Check size={18} className="text-[#34C759] ml-2" />
-                  : <Copy size={18} className="text-[#c7c7cc] ml-2" />}
+                {copied === v.name ? <Check size={18} className="text-[#34C759] ml-2" /> : <Copy size={18} className="text-[#c7c7cc] ml-2" />}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Editor / Preview */}
       <div>
-        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">
-          {preview ? 'Preview' : 'HTML Editor'}
-        </p>
+        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">{preview ? 'Preview' : 'HTML Editor'}</p>
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
           {!preview ? (
             <textarea

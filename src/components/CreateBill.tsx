@@ -18,6 +18,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import Toast from './Toast';
 import BarcodeScannerModal from './BarcodeScannerModal';
+import AnimatedNumber from './AnimatedNumber';
 import { useCartLock } from '../App';
 
 export default function CreateBill() {
@@ -378,14 +379,14 @@ export default function CreateBill() {
                       <button onClick={() => qty(item.product.id, -1)} className="w-[28px] h-[28px] flex items-center justify-center text-[#007AFF] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] rounded-l-[7px]">
                         <Minus size={14} strokeWidth={2.5} />
                       </button>
-                      <span className="text-[15px] font-semibold text-black dark:text-white w-[28px] text-center tabular-nums">{item.qty}</span>
+                      <AnimatedNumber value={item.qty} className="text-[15px] font-semibold text-black dark:text-white w-[28px] text-center tabular-nums inline-block" />
                       <button onClick={() => qty(item.product.id, 1)} className="w-[28px] h-[28px] flex items-center justify-center text-[#007AFF] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c] rounded-r-[7px]">
                         <Plus size={14} strokeWidth={2.5} />
                       </button>
                     </div>
                   </div>
                   <span className="w-[52px] text-[14px] text-[#8e8e93] tabular-nums text-right">{item.product.rate.toFixed(2)}</span>
-                  <span className="w-[60px] text-[15px] font-semibold text-black dark:text-white tabular-nums text-right">{(item.product.rate * item.qty).toFixed(2)}</span>
+                  <AnimatedNumber value={item.product.rate * item.qty} decimals={2} className="w-[60px] text-[15px] font-semibold text-black dark:text-white tabular-nums text-right inline-block" />
                   <div className="w-[32px] flex justify-end">
                     <button onClick={() => rm(item.product.id)} className="text-[#FF3B30] active:opacity-50 p-1">
                       <Trash2 size={16} />
@@ -405,7 +406,7 @@ export default function CreateBill() {
             <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-[11px]" style={{ borderBottom: '0.5px solid var(--sep)' }}>
                 <span className="text-[17px] text-black dark:text-white">Items</span>
-                <span className="text-[17px] text-[#8e8e93] tabular-nums">{ti}</span>
+                <AnimatedNumber value={ti} className="text-[17px] text-[#8e8e93] tabular-nums" />
               </div>
               <div className="flex items-center justify-between px-4 py-[11px]" style={{ borderBottom: '0.5px solid var(--sep)' }}>
                 <span className="text-[17px] text-black dark:text-white">Quantity</span>
@@ -413,7 +414,7 @@ export default function CreateBill() {
               </div>
               <div className="flex items-center justify-between px-4 py-[11px]">
                 <span className="text-[17px] font-semibold text-black dark:text-white">Total</span>
-                <span className="text-[20px] font-bold text-black dark:text-white tabular-nums">₹{total.toFixed(2)}</span>
+                <AnimatedNumber value={total} decimals={2} prefix="₹" className="text-[20px] font-bold text-black dark:text-white tabular-nums" />
               </div>
             </div>
           </div>

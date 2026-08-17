@@ -54,6 +54,13 @@ export default function SettingsPanel() {
     setDarkMode(n);
     document.documentElement.classList.toggle('dark', n);
     applyThemeChrome(n);
+
+    // smooth fade on theme switch
+    document.body.classList.remove('theme-fade');
+    // force reflow so animation can replay
+    void document.body.offsetWidth;
+    document.body.classList.add('theme-fade');
+    window.setTimeout(() => document.body.classList.remove('theme-fade'), 450);
   };
 
   const handleLogin = async () => {

@@ -24,3 +24,9 @@ export interface Bill {
 export type TabId = 'create' | 'history' | 'inventory' | 'template' | 'settings';
 
 export type MarginSetting = number;
+
+export interface TemplateSlot {
+  id: string;
+  name: string;
+  html: string;
+}

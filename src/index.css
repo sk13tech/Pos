@@ -18,7 +18,7 @@
     background: #f2f2f7;
     color: #000;
     margin: 0;
-    transition: background-color 0.3s, color 0.3s;
+    transition: background-color 0.42s cubic-bezier(0.22, 1, 0.36, 1), color 0.42s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .dark body {
     background: #000;
@@ -32,6 +32,70 @@
 
 ::-webkit-scrollbar { width: 0; height: 0; }
 * { scrollbar-width: none; }
+
+@keyframes tab-slide-left {
+  from {
+    opacity: 0.28;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tab-slide-right {
+  from {
+    opacity: 0.28;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes theme-fade {
+  0% {
+    opacity: 0.82;
+    filter: saturate(0.96);
+  }
+  100% {
+    opacity: 1;
+    filter: saturate(1);
+  }
+}
+
+.tab-slide-left {
+  animation: tab-slide-left 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tab-slide-right {
+  animation: tab-slide-right 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.theme-fade {
+  animation: theme-fade 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-slide-left,
+  .tab-slide-right,
+  .theme-fade {
+    animation: none !important;
+  }
+  button,
+  input,
+  textarea,
+  select,
+  body,
+  header,
+  nav,
+  main,
+  div {
+    transition: none !important;
+  }
+}
 
 /* iOS-style slider */
 .ios-slider {
