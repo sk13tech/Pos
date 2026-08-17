@@ -41,8 +41,6 @@ export default function App() {
   const [cartCount, setCartCount] = useState(0);
   const [pendingTab, setPendingTab] = useState<TabId | null>(null);
   const [animClass, setAnimClass] = useState('');
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
-  const [touchStartY, setTouchStartY] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = onAuthChange(async (u) => {
@@ -79,30 +77,6 @@ export default function App() {
     if (t) switchTab(t);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    setTouchStartX(touch.clientX);
-    setTouchStartY(touch.clientY);
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX === null || touchStartY === null) return;
-    const touch = e.changedTouches[0];
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    setTouchStartX(null);
-    setTouchStartY(null);
-
-    if (Math.abs(deltaX) < 60 || Math.abs(deltaX) < Math.abs(deltaY)) return;
-
-    const currentIndex = TAB_ORDER.indexOf(tab);
-    if (deltaX < 0 && currentIndex < TAB_ORDER.length - 1) {
-      handleTabChange(TAB_ORDER[currentIndex + 1]);
-    }
-    if (deltaX > 0 && currentIndex > 0) {
-      handleTabChange(TAB_ORDER[currentIndex - 1]);
-    }
-  };
 
   useEffect(() => {
     if (!animClass) return;
@@ -118,7 +92,7 @@ export default function App() {
             <h1 className="text-[34px] font-bold text-black dark:text-white tracking-tight leading-tight pt-4">{titles[tab]}</h1>
           </header>
 
-          <main className="px-4 pb-[100px] max-w-lg mx-auto pt-2 overflow-x-hidden select-none" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+          <main className="px-4 pb-[100px] max-w-lg mx-auto pt-2 overflow-x-hidden">
             <div key={tab} className={animClass}>
               {tab === 'create' && <CreateBill />}
               {tab === 'history' && <BillHistory />}
