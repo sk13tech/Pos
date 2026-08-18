@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Eye, EyeOff, Copy, Check, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Save, Eye, EyeOff, Copy, Check, ChevronRight, CheckCircle2, Braces } from 'lucide-react';
 import { TemplateSlot } from '../types';
 import {
   getTemplate,
@@ -40,7 +40,7 @@ export default function Template() {
   const [activeId, setActiveIdState] = useState(getActiveTemplateId());
   const [selectedId, setSelectedId] = useState(getActiveTemplateId());
   const [html, setHtml] = useState(getTemplate());
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(true);
   const [showVars, setShowVars] = useState(false);
   const [toast, setToast] = useState('');
   const [tt, setTT] = useState<'success'|'error'|'info'>('success');
@@ -109,6 +109,7 @@ export default function Template() {
         <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Controls</p>
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
           <button onClick={() => setShowVars(!showVars)} className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]" style={{borderBottom:'0.5px solid var(--sep)'}}>
+            <Braces size={20} className="text-[#007AFF] mr-3" />
             <span className="text-[17px] text-[#007AFF] flex-1 text-left">{showVars ? 'Hide' : 'Show'} Variables</span>
             <ChevronRight size={18} className="text-[#c7c7cc]" />
           </button>

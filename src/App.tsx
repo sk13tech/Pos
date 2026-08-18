@@ -80,7 +80,7 @@ export default function App() {
 
   useEffect(() => {
     if (!animClass) return;
-    const timer = setTimeout(() => setAnimClass(''), 280);
+    const timer = setTimeout(() => setAnimClass(''), 580);
     return () => clearTimeout(timer);
   }, [animClass]);
 

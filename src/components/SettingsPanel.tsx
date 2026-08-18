@@ -24,6 +24,7 @@ import { useAuth } from '../App';
 import { applyThemeChrome } from '../theme';
 import Toast from './Toast';
 import ActionSheet from './ActionSheet';
+import LegalSheet from './LegalSheet';
 
 export default function SettingsPanel() {
   const { user, restoring } = useAuth();
@@ -35,6 +36,8 @@ export default function SettingsPanel() {
   const [manualSyncing, setManualSyncing] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [showSignOut, setShowSignOut] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const [sName, setSName] = useState(getStoreName());
   const [sPhone, setSPhone] = useState(getStorePhone());
@@ -245,12 +248,12 @@ export default function SettingsPanel() {
         <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[15px] text-black dark:text-white">{qrSizeVal}px</span>
-            <span className="text-[13px] text-[#8e8e93]">20 – 100</span>
+            <span className="text-[13px] text-[#8e8e93]">20 – 200</span>
           </div>
           <input
             type="range"
             min={20}
-            max={100}
+            max={200}
             step={1}
             value={qrSizeVal}
             onChange={e => setQrSizeVal(Number(e.target.value))}
@@ -321,6 +324,28 @@ export default function SettingsPanel() {
         </div>
       </div>
 
+      {/* Legal */}
+      <div>
+        <p className="text-[13px] text-[#8e8e93] uppercase px-4 mb-[6px] font-medium">Legal</p>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[10px] overflow-hidden">
+          <button
+            onClick={() => setShowPrivacy(true)}
+            className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]"
+            style={{ borderBottom: '0.5px solid var(--sep)' }}
+          >
+            <span className="text-[17px] text-black dark:text-white flex-1 text-left">Privacy Policy</span>
+            <ChevronRight size={18} className="text-[#c7c7cc]" />
+          </button>
+          <button
+            onClick={() => setShowTerms(true)}
+            className="w-full flex items-center px-4 py-[11px] active:bg-[#d1d1d6] dark:active:bg-[#3a3a3c]"
+          >
+            <span className="text-[17px] text-black dark:text-white flex-1 text-left">Terms & Conditions</span>
+            <ChevronRight size={18} className="text-[#c7c7cc]" />
+          </button>
+        </div>
+      </div>
+
       {/* Sign Out */}
       {user && (
         <button
@@ -338,6 +363,18 @@ export default function SettingsPanel() {
         actions={[{ label: 'Sign Out', destructive: true, onClick: handleLogout }]}
         onCancel={() => setShowSignOut(false)}
       />
+
+      <LegalSheet open={showPrivacy} title="Privacy Policy" onClose={() => setShowPrivacy(false)}>
+        <p>Retail Panel stores your billing, template, and inventory data locally during the active session and syncs it to your connected cloud database when you are signed in.</p>
+        <p>Your Google account is used only for authentication and secure access to your own cloud data. We do not sell, share, or monetize your store information.</p>
+        <p>You are responsible for securing your device, Google account, and Firebase project configuration.</p>
+      </LegalSheet>
+
+      <LegalSheet open={showTerms} title="Terms & Conditions" onClose={() => setShowTerms(false)}>
+        <p>Retail Panel is provided as a business utility for invoice generation, billing, cloud sync, and inventory management.</p>
+        <p>You are solely responsible for the correctness of the invoices, taxes, store details, and all operational data used in your business.</p>
+        <p>Cloud functionality depends on your Firebase project, its rules, and your Google sign-in. You should regularly back up important business data.</p>
+      </LegalSheet>
 
       <Toast message={toast} type={tt} />
     </div>

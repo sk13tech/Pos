@@ -1,6 +1,6 @@
 {
   "name": "Retail Panel",
-  "short_name": "Retail",
+  "short_name": "Retail Panel",
   "description": "POS Billing & Inventory System",
   "start_url": "/",
   "display": "standalone",

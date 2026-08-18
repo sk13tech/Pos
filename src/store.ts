@@ -232,7 +232,7 @@ export function saveSettingsBatch(settings: {
   localStorage.setItem(KEYS.storeAddress, settings.storeAddress);
   localStorage.setItem(KEYS.storeGstin, settings.storeGstin);
   localStorage.setItem(KEYS.margin, String(settings.margin));
-  localStorage.setItem(KEYS.qrSize, Math.max(20, Math.min(100, settings.qrSize)).toString());
+  localStorage.setItem(KEYS.qrSize, Math.max(20, Math.min(200, settings.qrSize)).toString());
   syncToCloud();
 }
 
